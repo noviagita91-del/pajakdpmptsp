@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Pengingat Pajak Kendaraan Bermotor</title>
+<style>
+body {font-family: Arial, sans-serif; background:#f4f6f8; padding:20px;}
+h2{text-align:center;}
+form, table{background:white; padding:15px; border-radius:8px; margin-bottom:20px;}
+input, button{padding:8px; margin:5px 0; width:100%;}
+button{background:#007bff; color:white; border:none; cursor:pointer; border-radius:5px;}
+button:hover{background:#0056b3;}
+table{width:100%; border-collapse:collapse;}
+th,td{border:1px solid #ddd; padding:8px; text-align:center;}
+th{background:#007bff; color:white;}
+.aman{color:green;font-weight:bold;}
+.warning{color:orange;font-weight:bold;}
+.danger{color:red;font-weight:bold;}
+.readonly{opacity:0.6;}
+.aksi-btn{padding:5px 10px; width:auto;}
+</style>
+</head>
+<body>
+
+<h2>Pajak Kendaraan DPMPTSP BLORA</h2>
+
+<button onclick="loginAdmin()">Login Admin</button>
+<p id="statusLogin"><b>Mode:</b> Viewer (tidak bisa edit)</p>
+
+<form id="pajakForm" class="readonly">
+    <label>Nomor Polisi</label>
+    <input type="text" id="nopol" disabled required>
+
+    <label>Nama Kendaraan</label>
+    <input type="text" id="kendaraan" disabled required>
+
+    <label>Tanggal Jatuh Tempo Pajak</label>
+    <input type="date" id="jatuhTempo" disabled required>
+
+    <button type="submit" disabled>Simpan</button>
+</form>
+
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>No Polisi</th>
+<th>Kendaraan</th>
+<th>Jatuh Tempo</th>
+<th>Sisa Hari</th>
+<th>Status</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="dataPajak"></tbody>
+</table>
+
+<script>
+const ADMIN_PASSWORD = "admin123"; // ganti password
+let isAdmin = false;
+let editIndex = null;
+
+let data = JSON.parse(localStorage.getItem("pajak")) || [];
+
+function loginAdmin(){
+    const pass = prompt("Masukkan Password Admin:");
+    if(pass === ADMIN_PASSWORD){
+        isAdmin = true;
+        document.getElementById("statusLogin").innerHTML =
+            "<b>Mode:</b> Admin (bisa tambah & edit)";
+        document.querySelectorAll("#pajakForm input, #pajakForm button")
+            .forEach(el => el.disabled = false);
+        document.getElementById("pajakForm").classList.remove("readonly");
+        tampilkanData();
+        alert("Login admin berhasil");
+    } else {
+        alert("Password salah");
+    }
+}
+
+function hitungHari(tanggal){
+    const hariIni = new Date();
+    const tempo = new Date(tanggal);
+    return Math.ceil((tempo - hariIni) / (1000*60*60*24));
+}
+
+function tampilkanData(){
+    const tbody = document.getElementById("dataPajak");
+    tbody.innerHTML = "";
+    data.forEach((item, i) => {
+        const sisa = hitungHari(item.jatuhTempo);
+        let status="Aman", kelas="aman";
+        if(sisa <= 30 && sisa >= 0){
+            status="Hampir Jatuh Tempo"; kelas="warning";
+        }
+        if(sisa < 0){
+            status="Terlambat"; kelas="danger";
+        }
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${item.nopol}</td>
+            <td>${item.kendaraan}</td>
+            <td>${item.jatuhTempo}</td>
+            <td>${sisa}</td>
+            <td class="${kelas}">${status}</td>
+            <td>
+                ${isAdmin ? `<button class="aksi-btn" onclick="editData(${i})">Edit</button>` : "-"}
+            </td>
+        </tr>`;
+    });
+}
+
+function editData(index){
+    if(!isAdmin){
+        alert("Hanya admin yang bisa mengedit data");
+        return;
+    }
+    const item = data[index];
+    nopol.value = item.nopol;
+    kendaraan.value = item.kendaraan;
+    jatuhTempo.value = item.jatuhTempo;
+    editIndex = index;
+}
+
+document.getElementById("pajakForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!isAdmin){
+        alert("Anda bukan admin");
+        return;
+    }
+
+    const obj = {
+        nopol: nopol.value,
+        kendaraan: kendaraan.value,
+        jatuhTempo: jatuhTempo.value
+    };
+
+    if(editIndex === null){
+        data.push(obj); // tambah data
+    } else {
+        data[editIndex] = obj; // edit data
+        editIndex = null;
+    }
+
+    localStorage.setItem("pajak", JSON.stringify(data));
+    this.reset();
+    tampilkanData();
+});
+
+tampilkanData();
+</script>
+
+</body>
+</html>
